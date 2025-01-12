@@ -1,0 +1,4 @@
+__pycache__
+.DS_Store
+.venv
+simple_test_out.wav
