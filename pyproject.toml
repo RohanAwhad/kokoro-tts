@@ -10,9 +10,9 @@ name = "kokoro-tts"
 version = "0.1.0"
 description = "An easy installation to Kokoro Text-to-speech ONNX model"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 dependencies = [
-    "onnxruntime>=1.20.1",
+    "onnxruntime==1.19.2",
     "phonemizer>=3.3.0",
     "requests>=2.32.3",
     "torch>=2.5.1",
