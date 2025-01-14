@@ -9,6 +9,9 @@ import os
 import numpy as np
 from onnxruntime import InferenceSession
 
+import nltk
+nltk.download('punkt_tab')
+
 
 def split_num(num):
     num = num.group()
@@ -244,23 +247,53 @@ class Kokoro:
 
 
     def generate(self, text, voice_name):
-        assert isinstance(text, str), f'text should be of type str, but found "{type(text)}"'
-        assert voice_name in self.AVAILABLE_VOICES, f'voice_name should be one of "{self.AVAILABLE_VOICES}", but got "{voice_name}"'
+      assert isinstance(text, str), f'text should be of type str, but found "{type(text)}"'
+      assert voice_name in self.AVAILABLE_VOICES, f'voice_name should be one of "{self.AVAILABLE_VOICES}", but got "{voice_name}"'
 
-        if self._voice is None or voice_name != self._curr_voice:
-            self.load_voice(voice_name)
+      # Split into sentences
+      sentences = nltk.sent_tokenize(text)
+      chunks = []
+      curr_chunk = []
+      curr_len = 0
 
-        tokens = tokenize(phonemize(text, lang=voice_name[0]))
-        assert len(tokens) <= 510, f'len of tokens generated should be <=510, but got "{len(tokens)}"'
+      # Create chunks with total words < 25
+      CHUNK_SIZE = 25
+      for sent in sentences:
+        words = sent.split()
+        if curr_len + len(words) > CHUNK_SIZE:
+          if curr_chunk:
+            chunks.append(' '.join(curr_chunk))
+          curr_chunk = words
+          curr_len = len(words)
+        else:
+          curr_chunk.extend(words)
+          curr_len += len(words)
+
+      if curr_chunk:
+        chunks.append(' '.join(curr_chunk))
+
+      # Load voice and model if needed
+      if self._voice is None or voice_name != self._curr_voice:
+        self.load_voice(voice_name)
+      if self._sess is None:
+        self.load_model()
+
+      # Generate audio for each chunk
+      audio_chunks = []
+      for chunk in chunks:
+        tokens = tokenize(phonemize(chunk, lang=voice_name[0]))
+        if len(tokens) > 510:
+          print(f'Warning: chunk truncated from {len(tokens)} to 510 tokens')
+          tokens = tokens[:510]
         tokens = [[0, *tokens, 0]]
-
-        if self._sess is None:
-            self.load_model()
 
         ref_s = self._voice[len(tokens)].numpy()
         audio = self._sess.run(None, dict(
-            tokens=tokens, 
-            style=ref_s,
-            speed=np.ones(1, dtype=np.float32)
+          tokens=tokens,
+          style=ref_s,
+          speed=np.ones(1, dtype=np.float32)
         ))[0]
-        return audio
+        audio_chunks.append(audio)
+
+      # Concatenate chunks
+      return np.concatenate(audio_chunks)

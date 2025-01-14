@@ -12,6 +12,7 @@ description = "An easy installation to Kokoro Text-to-speech ONNX model"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "nltk>=3.9.1",
     "onnxruntime==1.19.2",
     "phonemizer>=3.3.0",
     "requests>=2.32.3",
